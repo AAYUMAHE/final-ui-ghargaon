@@ -14,7 +14,7 @@ import {
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { useCart } from "@/hooks/useCart";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import UserMenu from "@/components/UserMenu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +40,12 @@ import { toast } from "sonner";
 
 const Navbar = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const dispatch = useAppDispatch();
+
+  // Hide navbar on admin pages
+  if (pathname.startsWith("/admin")) return null;
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
