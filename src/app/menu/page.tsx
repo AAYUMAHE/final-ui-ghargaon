@@ -437,7 +437,6 @@ export default function UserMenuPage() {
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="veg">Veg Only</SelectItem>
-                <SelectItem value="nonveg">Non-veg Only</SelectItem>
               </SelectContent>
             </Select>
 

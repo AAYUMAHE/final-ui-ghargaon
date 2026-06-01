@@ -24,7 +24,7 @@ export default function GharGaonLanding() {
     if (index < words.length - 1) {
       const timer = setTimeout(() => {
         setIndex((prev) => prev + 1);
-      }, 2000);
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [index]);
@@ -48,7 +48,7 @@ export default function GharGaonLanding() {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.2 }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.3 }}
               className="text-5xl md:text-7xl lg:text-9xl font-extrabold text-white tracking-wider text-center drop-shadow-2xl px-4"
             >
               {words[index]}

@@ -135,7 +135,6 @@ export default function SubscriptionPlansPage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {filteredPlans.map((plan, index) => {
-              const isPopular = index === 2; // Make the 3rd plan popular
               const savings = plan.durationDays >= 30 
                 ? Math.round((plan.pricePerDay * plan.durationDays * 0.2))
                 : 0;
@@ -148,17 +147,7 @@ export default function SubscriptionPlansPage() {
                   transition={{ delay: index * 0.1 }}
                   className="relative"
                 >
-                  {isPopular && (
-                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
-                      <Badge className="bg-accent text-white px-4 py-1 flex items-center gap-1">
-                        <Award size={14} /> Most Popular
-                      </Badge>
-                    </div>
-                  )}
-
-                  <Card className={`rounded-2xl h-full hover:shadow-xl transition-all ${
-                    isPopular ? 'border-2 border-primary scale-105' : ''
-                  }`}>
+                  <Card className="rounded-2xl h-full hover:shadow-xl transition-all">
                     <CardContent className="p-6 flex flex-col h-full">
                       {/* Plan Header */}
                       <div className="mb-4">
@@ -200,11 +189,7 @@ export default function SubscriptionPlansPage() {
                       {/* Subscribe Button */}
                       <Button
                         onClick={() => handleSubscribe(plan._id)}
-                        className={`w-full rounded-full ${
-                          isPopular 
-                            ? 'bg-primary hover:bg-accent' 
-                            : 'bg-soft text-primary hover:bg-primary hover:text-white'
-                        }`}
+                        className="w-full rounded-full bg-soft text-primary hover:bg-primary hover:text-white"
                       >
                         Subscribe Now
                         <ChevronRight size={16} className="ml-1" />
