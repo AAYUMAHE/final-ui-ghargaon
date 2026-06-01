@@ -123,9 +123,8 @@ const SubscriptionSection = () => (
                 <motion.div
                     key={plan.id}
                     initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}
-                    className={`relative p-8 rounded-3xl flex flex-col items-center text-center transition-all ${plan.recommended ? 'bg-primary text-white shadow-2xl scale-105 z-10' : 'bg-white text-textdark border border-gray-100'}`}
+                    className="relative p-8 rounded-3xl flex flex-col items-center text-center transition-all bg-white text-textdark border border-gray-100"
                 >
-                    {plan.recommended && <div className="absolute -top-4 bg-accent text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg uppercase tracking-wider">Most Popular</div>}
                     <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
                     <p className="text-4xl font-black mb-6">{plan.price}</p>
                     <ul className="space-y-4 mb-10 text-sm opacity-90 font-medium">
@@ -133,7 +132,7 @@ const SubscriptionSection = () => (
                         <li className="flex items-center gap-2"><Leaf size={16} /> Veg / Non-Veg Option</li>
                         <li className="flex items-center gap-2"><ShieldCheck size={16} /> Weekend Available</li>
                     </ul>
-                    <button className={`w-full py-4 rounded-2xl font-bold transition-all mt-auto ${plan.recommended ? 'bg-white text-primary hover:bg-gray-100' : 'bg-primary text-white hover:bg-accent'}`}>
+                    <button className="w-full py-4 rounded-2xl font-bold transition-all mt-auto bg-primary text-white hover:bg-accent">
                         Subscribe Now
                     </button>
                 </motion.div>
@@ -175,12 +174,6 @@ export default function DetailedMenu() {
                     className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all border ${dietaryFilter === "Veg" ? 'bg-green/10 border-green text-green' : 'bg-gray-50 border-transparent text-gray-500 hover:border-gray-200'}`}
                 >
                     <div className="w-2 h-2 rounded-full bg-green" /> Pure Veg
-                </button>
-                <button
-                    onClick={() => setDietaryFilter(dietaryFilter === "Non-Veg" ? null : "Non-Veg")}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all border ${dietaryFilter === "Non-Veg" ? 'bg-red-50 border-red-500 text-red-500' : 'bg-gray-50 border-transparent text-gray-500 hover:border-gray-200'}`}
-                >
-                    <div className="w-2 h-2 rounded-full bg-red-500" /> Non-Veg
                 </button>
             </div>
 
@@ -412,13 +405,46 @@ const Footer = () => (
             <div>
                 <h4 className="font-bold text-lg mb-6 text-white tracking-wide">Support</h4>
                 <ul className="space-y-4 text-gray-400 text-sm">
-                    {["Help Center", "Delivery Areas", "Terms of Service", "Refund Policy"].map((item, i) => (
-                        <li key={i}>
-                            <a href="#" className="hover:text-primary hover:translate-x-1 inline-block transition-all duration-300">
-                                {item}
-                            </a>
-                        </li>
-                    ))}
+                    <li>
+                        <a
+                            href="https://docs.google.com/document/d/1h70ObO1iUd0sZrLt_mQy4veA_QL4oD-ppH9LhRa8POk/edit?usp=sharing"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-primary hover:translate-x-1 inline-block transition-all duration-300"
+                        >
+                            Help Center
+                        </a>
+                    </li>
+                    <li>
+                        <a
+                            href="https://docs.google.com/document/d/1hGx6CmU0pHqKJ_fGrGj3G1TfPBAw_wLNy9sdo0rAqOw/edit?usp=sharing"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-primary hover:translate-x-1 inline-block transition-all duration-300"
+                        >
+                            Delivery Areas
+                        </a>
+                    </li>
+                    <li>
+                        <a
+                            href="https://docs.google.com/document/d/1sttupkYJTUoTNmOqcIt-S7fy7BgRVcWUC6xm6JYR3as/edit?usp=sharing"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-primary hover:translate-x-1 inline-block transition-all duration-300"
+                        >
+                            Terms of Service
+                        </a>
+                    </li>
+                    <li>
+                        <a
+                            href="https://docs.google.com/document/d/1kKdYpb1gq7m4V-F3dms-h_Bv-Zz6D8DvjL38_3KVPmg/edit?usp=sharing"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-primary hover:translate-x-1 inline-block transition-all duration-300"
+                        >
+                            Refund Policy
+                        </a>
+                    </li>
                 </ul>
             </div>
 
