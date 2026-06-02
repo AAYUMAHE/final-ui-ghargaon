@@ -129,6 +129,15 @@ export default function UserMenuPage() {
       return
     }
 
+    // Time-based cutoff check
+    if (!isOrderingAllowed(mealType)) {
+      toast.error(
+        `${mealType.charAt(0).toUpperCase() + mealType.slice(1)} ordering is closed after ${getCutoffLabel(mealType)}`,
+        { description: "Please order before the cutoff time for same-day delivery." }
+      )
+      return
+    }
+
     const dateStr = format(selectedDate, "yyyy-MM-dd")
 
     // Check if item already exists in cart
@@ -186,6 +195,27 @@ export default function UserMenuPage() {
     if (isToday(date)) return "Today"
     if (isTomorrow(date)) return "Tomorrow"
     return format(date, "EEEE, MMM d")
+  }
+
+  // Returns true if ordering is still open for the given meal type
+  // Cutoffs apply only for today's date:
+  //   Lunch  → closes at 11:00 AM
+  //   Dinner → closes at  6:00 PM
+  const isOrderingAllowed = (mealType: string): boolean => {
+    if (!isToday(selectedDate)) return true // future dates always open
+    const now = new Date()
+    const totalMins = now.getHours() * 60 + now.getMinutes()
+    if (mealType === "breakfast") return totalMins < 4 * 60 + 30  // before 4:30 AM
+    if (mealType === "lunch")     return totalMins < 11 * 60       // before 11:00 AM
+    if (mealType === "dinner")    return totalMins < 18 * 60       // before  6:00 PM
+    return true
+  }
+
+  const getCutoffLabel = (mealType: string): string => {
+    if (mealType === "breakfast") return "4:30 AM"
+    if (mealType === "lunch")     return "11:00 AM"
+    if (mealType === "dinner")    return "6:00 PM"
+    return ""
   }
 
   const filteredDishes = () => {
@@ -485,6 +515,8 @@ export default function UserMenuPage() {
                           setSelectedDish(dish)
                           setIsDishDialogOpen(true)
                         }}
+                        orderingAllowed={isOrderingAllowed(mealType)}
+                        cutoffLabel={getCutoffLabel(mealType)}
                       />
                     ))
                   }
@@ -510,6 +542,8 @@ export default function UserMenuPage() {
                   setSelectedDish(dish)
                   setIsDishDialogOpen(true)
                 }}
+                orderingAllowed={isOrderingAllowed(selectedMealType)}
+                cutoffLabel={getCutoffLabel(selectedMealType)}
               />
             ))}
           </div>
@@ -617,11 +651,13 @@ export default function UserMenuPage() {
 }
 
 // Dish Card Component
-function DishCard({ dish, mealType, onAddToCart, onViewDetails }: { 
+function DishCard({ dish, mealType, onAddToCart, onViewDetails, orderingAllowed = true, cutoffLabel = "" }: { 
   dish: Dish, 
   mealType: string,
   onAddToCart: () => void,
   onViewDetails: () => void
+  orderingAllowed?: boolean
+  cutoffLabel?: string
 }) {
   return (
     <Card className="rounded-2xl overflow-hidden hover:shadow-xl transition-all group cursor-pointer" onClick={onViewDetails}>
@@ -648,6 +684,17 @@ function DishCard({ dish, mealType, onAddToCart, onViewDetails }: {
             <Flame size={12} className="mr-1" /> Hot
           </Badge>
         )}
+        {/* Ordering closed overlay */}
+        {!orderingAllowed && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <div className="bg-white/95 rounded-xl px-4 py-2 text-center shadow-lg">
+              <p className="text-error font-bold text-sm">Ordering Closed</p>
+              {cutoffLabel && (
+                <p className="text-xs text-gray-500 mt-0.5">Closed after {cutoffLabel}</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       <CardContent className="p-4">
         <div className="flex justify-between items-start mb-2">
@@ -670,15 +717,25 @@ function DishCard({ dish, mealType, onAddToCart, onViewDetails }: {
           )}
         </div>
 
-        <Button 
-          className="w-full bg-primary hover:bg-accent rounded-full"
-          onClick={(e) => {
-            e.stopPropagation()
-            onAddToCart()
-          }}
-        >
-          Add to Cart
-        </Button>
+        {orderingAllowed ? (
+          <Button 
+            className="w-full bg-primary hover:bg-accent rounded-full"
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddToCart()
+            }}
+          >
+            Add to Cart
+          </Button>
+        ) : (
+          <Button
+            disabled
+            className="w-full rounded-full bg-gray-100 text-gray-400 cursor-not-allowed"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {cutoffLabel ? `Closed after ${cutoffLabel}` : "Ordering Closed"}
+          </Button>
+        )}
       </CardContent>
     </Card>
   )
