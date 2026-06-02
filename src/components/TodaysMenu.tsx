@@ -21,6 +21,7 @@ interface TodaysMenuProps {
 
 export default function TodaysMenu({ limit = 4, showViewAll = true }: TodaysMenuProps) {
   const [dishes, setDishes] = useState<Dish[]>([]);
+  const [menus, setMenus] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { addItem } = useCart();
 
@@ -31,10 +32,11 @@ export default function TodaysMenu({ limit = 4, showViewAll = true }: TodaysMenu
   const fetchTodaysDishes = async () => {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
-      const menus = await menuApi.getMenusByDate(today);
+      const fetchedMenus = await menuApi.getMenusByDate(today);
+      setMenus(fetchedMenus);
       
       // Extract all unique dishes from all meal types
-      const allDishes = menus.reduce((acc: Dish[], menu: any) => {
+      const allDishes = fetchedMenus.reduce((acc: Dish[], menu: any) => {
         menu.dishes.forEach((dish: Dish) => {
           if (!acc.find(d => d._id === dish._id)) {
             acc.push(dish);
@@ -52,14 +54,68 @@ export default function TodaysMenu({ limit = 4, showViewAll = true }: TodaysMenu
     }
   };
 
+  const isOrderingAllowed = (mealType: string): boolean => {
+    const now = new Date();
+    const totalMins = now.getHours() * 60 + now.getMinutes();
+    if (mealType === "breakfast") return totalMins < 4 * 60 + 30;  // before 4:30 AM
+    if (mealType === "lunch")     return totalMins < 11 * 60;       // before 11:00 AM
+    if (mealType === "dinner")    return totalMins < 18 * 60;       // before 6:00 PM
+    return true;
+  };
+
+  const getCutoffLabel = (mealType: string): string => {
+    if (mealType === "breakfast") return "4:30 AM";
+    if (mealType === "lunch")     return "11:00 AM";
+    if (mealType === "dinner")    return "6:00 PM";
+    return "";
+  };
+
+  const isDishOrderingAllowed = (dish: Dish): boolean => {
+    const availableMealTypes = menus
+      .filter(menu => menu.dishes.some(d => d._id === dish._id))
+      .map(menu => menu.mealType);
+      
+    if (availableMealTypes.length === 0) return isOrderingAllowed("lunch");
+    return availableMealTypes.some(mt => isOrderingAllowed(mt));
+  };
+
+  const getDishCutoffLabel = (dish: Dish): string => {
+    const availableMealTypes = menus
+      .filter(menu => menu.dishes.some(d => d._id === dish._id))
+      .map(menu => menu.mealType);
+    if (availableMealTypes.length === 0) return getCutoffLabel("lunch");
+    if (availableMealTypes.includes("dinner")) return getCutoffLabel("dinner");
+    if (availableMealTypes.includes("lunch")) return getCutoffLabel("lunch");
+    return getCutoffLabel("breakfast");
+  };
+
+  const getTargetMealType = (dish: Dish): string => {
+    const availableMealTypes = menus
+      .filter(menu => menu.dishes.some(d => d._id === dish._id))
+      .map(menu => menu.mealType);
+    if (availableMealTypes.length === 0) return "lunch";
+    const allowedMealType = availableMealTypes.find(mt => isOrderingAllowed(mt));
+    return allowedMealType || availableMealTypes[0];
+  };
+
   const handleAddToCart = (dish: Dish) => {
+    const targetMeal = getTargetMealType(dish);
+
+    if (!isOrderingAllowed(targetMeal)) {
+      toast.error(
+        `${targetMeal.charAt(0).toUpperCase() + targetMeal.slice(1)} ordering is closed after ${getCutoffLabel(targetMeal)}`,
+        { description: "Please order before the cutoff time for same-day delivery." }
+      );
+      return;
+    }
+
     addItem({
       dishId: dish._id,
       name: dish.name,
       image: dish.image,
       price: dish.price,
       quantity: 1,
-      mealType: "lunch", // Default, user can change in detailed view
+      mealType: targetMeal as "breakfast" | "lunch" | "dinner",
       type: dish.type,
       date: format(new Date(), "yyyy-MM-dd")
     });
@@ -154,6 +210,17 @@ export default function TodaysMenu({ limit = 4, showViewAll = true }: TodaysMenu
                       <Flame size={12} /> Hot
                     </div>
                   )}
+                  {/* Ordering closed overlay */}
+                  {!isDishOrderingAllowed(dish) && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+                      <div className="bg-white/95 rounded-xl px-4 py-2 text-center shadow-lg">
+                        <p className="text-red-600 font-bold text-sm">Ordering Closed</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Closed after {getDishCutoffLabel(dish)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </Link>
               
@@ -179,12 +246,21 @@ export default function TodaysMenu({ limit = 4, showViewAll = true }: TodaysMenu
 
                 <p className="text-primary font-black text-xl mb-4">₹{dish.price}</p>
                 
-                <button
-                  onClick={() => handleAddToCart(dish)}
-                  className="w-full bg-soft hover:bg-primary hover:text-white text-primary py-3 rounded-2xl font-bold transition-all flex items-center justify-center gap-2"
-                >
-                  <ShoppingBag size={18} /> Add to Order
-                </button>
+                {isDishOrderingAllowed(dish) ? (
+                  <button
+                    onClick={() => handleAddToCart(dish)}
+                    className="w-full bg-soft hover:bg-primary hover:text-white text-primary py-3 rounded-2xl font-bold transition-all flex items-center justify-center gap-2"
+                  >
+                    <ShoppingBag size={18} /> Add to Order
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="w-full bg-gray-100 text-gray-400 py-3 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 cursor-not-allowed"
+                  >
+                    Closed after {getDishCutoffLabel(dish)}
+                  </button>
+                )}
               </div>
             </motion.div>
           ))}

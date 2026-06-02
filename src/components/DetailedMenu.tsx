@@ -158,6 +158,56 @@ export default function DetailedMenu() {
     }
   };
 
+  const isOrderingAllowed = (mealType: string): boolean => {
+    if (!isToday(selectedDate)) return true; // future dates always open
+    const now = new Date();
+    const totalMins = now.getHours() * 60 + now.getMinutes();
+    if (mealType === "breakfast") return totalMins < 4 * 60 + 30;  // before 4:30 AM
+    if (mealType === "lunch")     return totalMins < 11 * 60;       // before 11:00 AM
+    if (mealType === "dinner")    return totalMins < 18 * 60;       // before 6:00 PM
+    return true;
+  };
+
+  const getCutoffLabel = (mealType: string): string => {
+    if (mealType === "breakfast") return "4:30 AM";
+    if (mealType === "lunch")     return "11:00 AM";
+    if (mealType === "dinner")    return "6:00 PM";
+    return "";
+  };
+
+  const isDishOrderingAllowed = (dish: Dish, mealType: string): boolean => {
+    if (mealType !== "all") {
+      return isOrderingAllowed(mealType);
+    }
+    const availableMealTypes = menus
+      .filter(menu => menu.dishes.some(d => d._id === dish._id))
+      .map(menu => menu.mealType);
+      
+    if (availableMealTypes.length === 0) return isOrderingAllowed("lunch");
+    return availableMealTypes.some(mt => isOrderingAllowed(mt));
+  };
+
+  const getDishCutoffLabel = (dish: Dish, mealType: string): string => {
+    if (mealType !== "all") return getCutoffLabel(mealType);
+    const availableMealTypes = menus
+      .filter(menu => menu.dishes.some(d => d._id === dish._id))
+      .map(menu => menu.mealType);
+    if (availableMealTypes.length === 0) return getCutoffLabel("lunch");
+    if (availableMealTypes.includes("dinner")) return getCutoffLabel("dinner");
+    if (availableMealTypes.includes("lunch")) return getCutoffLabel("lunch");
+    return getCutoffLabel("breakfast");
+  };
+
+  const getTargetMealType = (dish: Dish, preferredMealType: string): string => {
+    if (preferredMealType !== "all") return preferredMealType;
+    const availableMealTypes = menus
+      .filter(menu => menu.dishes.some(d => d._id === dish._id))
+      .map(menu => menu.mealType);
+    if (availableMealTypes.length === 0) return "lunch";
+    const allowedMealType = availableMealTypes.find(mt => isOrderingAllowed(mt));
+    return allowedMealType || availableMealTypes[0];
+  };
+
   const handleAddToCart = (dish: Dish, mealType: string) => {
     if (!user) {
       toast.error("Please login to add items to cart", {
@@ -169,12 +219,23 @@ export default function DetailedMenu() {
       return;
     }
 
+    const targetMeal = getTargetMealType(dish, mealType);
+
+    // Time-based cutoff check
+    if (!isOrderingAllowed(targetMeal)) {
+      toast.error(
+        `${targetMeal.charAt(0).toUpperCase() + targetMeal.slice(1)} ordering is closed after ${getCutoffLabel(targetMeal)}`,
+        { description: "Please order before the cutoff time for same-day delivery." }
+      );
+      return;
+    }
+
     const dateStr = format(selectedDate, "yyyy-MM-dd");
 
     // Check if item already exists in cart
     const existingItem = cartItems.find(
       item => item?.dishId === dish._id && 
-      item?.mealType === mealType && 
+      item?.mealType === targetMeal && 
       item?.date === dateStr
     );
 
@@ -182,7 +243,7 @@ export default function DetailedMenu() {
       // Update quantity if exists
       dispatch(updateCartItemQuantity({
         dishId: dish._id,
-        mealType,
+        mealType: targetMeal,
         date: dateStr,
         quantity: (existingItem.quantity || 1) + 1
       }));
@@ -195,7 +256,7 @@ export default function DetailedMenu() {
         image: dish.image,
         price: dish.price,
         quantity: 1,
-        mealType: mealType as "breakfast" | "lunch" | "dinner",
+        mealType: targetMeal as "breakfast" | "lunch" | "dinner",
         type: dish.type,
         date: dateStr
       }));
@@ -528,6 +589,17 @@ export default function DetailedMenu() {
                     <Flame size={12} className="mr-1" /> Hot
                   </Badge>
                 )}
+                {/* Ordering closed overlay */}
+                {!isDishOrderingAllowed(dish, selectedMealType) && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+                    <div className="bg-white/95 rounded-xl px-4 py-2 text-center shadow-lg">
+                      <p className="text-red-600 font-bold text-sm">Ordering Closed</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Closed after {getDishCutoffLabel(dish, selectedMealType)}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
               <CardContent className="p-4">
                 <div className="flex justify-between items-start mb-2">
@@ -552,16 +624,26 @@ export default function DetailedMenu() {
                   )}
                 </div>
 
-                <Button 
-                  className="w-full bg-primary hover:bg-accent rounded-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddToCart(dish, selectedMealType === "all" ? "lunch" : selectedMealType);
-                  }}
-                >
-                  <ShoppingBag size={16} className="mr-2" />
-                  Add to Cart
-                </Button>
+                {isDishOrderingAllowed(dish, selectedMealType) ? (
+                  <Button 
+                    className="w-full bg-primary hover:bg-accent rounded-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddToCart(dish, selectedMealType === "all" ? "lunch" : selectedMealType);
+                    }}
+                  >
+                    <ShoppingBag size={16} className="mr-2" />
+                    Add to Cart
+                  </Button>
+                ) : (
+                  <Button 
+                    disabled
+                    className="w-full rounded-full bg-gray-100 text-gray-400 cursor-not-allowed"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Closed after {getDishCutoffLabel(dish, selectedMealType)}
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -646,16 +728,25 @@ export default function DetailedMenu() {
                     )}
                   </div>
 
-                  <Button 
-                    className="w-full bg-primary hover:bg-accent rounded-full h-12 mt-4"
-                    onClick={() => {
-                      handleAddToCart(selectedDish, selectedMealType === "all" ? "lunch" : selectedMealType);
-                      setIsDishDialogOpen(false);
-                    }}
-                  >
-                    <ShoppingBag size={18} className="mr-2" />
-                    Add to Cart
-                  </Button>
+                  {isDishOrderingAllowed(selectedDish, selectedMealType) ? (
+                    <Button 
+                      className="w-full bg-primary hover:bg-accent rounded-full h-12 mt-4"
+                      onClick={() => {
+                        handleAddToCart(selectedDish, selectedMealType === "all" ? "lunch" : selectedMealType);
+                        setIsDishDialogOpen(false);
+                      }}
+                    >
+                      <ShoppingBag size={18} className="mr-2" />
+                      Add to Cart
+                    </Button>
+                  ) : (
+                    <Button 
+                      disabled
+                      className="w-full rounded-full h-12 mt-4 bg-gray-100 text-gray-400 cursor-not-allowed"
+                    >
+                      Closed after {getDishCutoffLabel(selectedDish, selectedMealType)}
+                    </Button>
+                  )}
                 </div>
               </div>
             </>
