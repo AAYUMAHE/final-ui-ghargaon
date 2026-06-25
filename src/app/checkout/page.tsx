@@ -23,7 +23,8 @@ import {
   Home,
   Briefcase,
   PlusCircle,
-  Map
+  Map,
+  Banknote
 } from "lucide-react";
 import { format } from "date-fns";
 import api from "@/lib/api";
@@ -77,7 +78,7 @@ export default function CheckoutPage() {
 
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [deliveryDate, setDeliveryDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [paymentMethod, setPaymentMethod] = useState<"upi">("upi");
+  const [paymentMethod, setPaymentMethod] = useState<"upi" | "cod">("upi");
   const [processing, setProcessing] = useState(false);
 
   // New address state
@@ -209,6 +210,10 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (paymentMethod === "cod") {
+      return handleCODOrder();
+    }
+
     try {
       setProcessing(true);
 
@@ -246,6 +251,36 @@ export default function CheckoutPage() {
     } finally {
       setProcessing(false);
       clearCart();
+    }
+  };
+
+  const handleCODOrder = async () => {
+    try {
+      setProcessing(true);
+
+      await api.post("/orders", {
+        items: cartItems.map((item) => ({
+          dishId: item.dishId,
+          quantity: item.quantity,
+        })),
+        deliveryDate,
+        deliveryAddress: selectedAddress,
+      });
+
+      dispatch(clearCart());
+      toast.success("Order placed successfully! Pay on delivery.");
+      router.push("/orders");
+
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        console.error("COD order error:", err.response?.data || err.message);
+        toast.error(err.response?.data?.message || "Order failed. Please try again.");
+      } else {
+        console.error("Unexpected error:", err);
+        toast.error("Order failed. Please try again.");
+      }
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -544,7 +579,9 @@ export default function CheckoutPage() {
                 </h2>
 
                 <RadioGroup value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
-                  <div className="border rounded-xl p-4">
+                  <div className={`border rounded-xl p-4 mb-3 transition-colors ${
+                    paymentMethod === "upi" ? "border-primary bg-primary/5" : ""
+                  }`}>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="upi" id="upi" />
                       <Label htmlFor="upi" className="flex-1 cursor-pointer">
@@ -558,7 +595,31 @@ export default function CheckoutPage() {
                       </Label>
                     </div>
                   </div>
+
+                  <div className={`border rounded-xl p-4 transition-colors ${
+                    paymentMethod === "cod" ? "border-primary bg-primary/5" : ""
+                  }`}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="cod" id="cod" />
+                      <Label htmlFor="cod" className="flex-1 cursor-pointer">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Banknote size={18} />
+                            <span className="font-medium">Cash on Delivery (COD)</span>
+                          </div>
+                          <Badge variant="outline">Pay when delivered</Badge>
+                        </div>
+                      </Label>
+                    </div>
+                  </div>
                 </RadioGroup>
+
+                <div className="mt-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <AlertCircle size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-amber-800">
+                    If Payment fails please select COD, we will deliver order.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -669,6 +730,11 @@ export default function CheckoutPage() {
                     <>
                       <Loader2 size={18} className="mr-2 animate-spin" />
                       Processing...
+                    </>
+                  ) : paymentMethod === "cod" ? (
+                    <>
+                      <Banknote size={18} className="mr-2" />
+                      Place Order (COD)
                     </>
                   ) : (
                     "Place Order"
