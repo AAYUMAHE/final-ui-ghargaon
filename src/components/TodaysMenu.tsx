@@ -38,7 +38,7 @@ export default function TodaysMenu({ limit = 4, showViewAll = true }: TodaysMenu
       // Extract all unique dishes from all meal types
       const allDishes = fetchedMenus.reduce((acc: Dish[], menu: any) => {
         menu.dishes.forEach((dish: Dish) => {
-          if (!acc.find(d => d._id === dish._id)) {
+          if (!acc.find((d: Dish) => d._id === dish._id)) {
             acc.push(dish);
           }
         });
@@ -72,7 +72,7 @@ export default function TodaysMenu({ limit = 4, showViewAll = true }: TodaysMenu
 
   const isDishOrderingAllowed = (dish: Dish): boolean => {
     const availableMealTypes = menus
-      .filter(menu => menu.dishes.some(d => d._id === dish._id))
+      .filter(menu => menu.dishes.some((d: Dish) => d._id === dish._id))
       .map(menu => menu.mealType);
       
     if (availableMealTypes.length === 0) return isOrderingAllowed("lunch");
@@ -81,7 +81,7 @@ export default function TodaysMenu({ limit = 4, showViewAll = true }: TodaysMenu
 
   const getDishCutoffLabel = (dish: Dish): string => {
     const availableMealTypes = menus
-      .filter(menu => menu.dishes.some(d => d._id === dish._id))
+      .filter(menu => menu.dishes.some((d: Dish) => d._id === dish._id))
       .map(menu => menu.mealType);
     if (availableMealTypes.length === 0) return getCutoffLabel("lunch");
     if (availableMealTypes.includes("dinner")) return getCutoffLabel("dinner");
@@ -91,7 +91,7 @@ export default function TodaysMenu({ limit = 4, showViewAll = true }: TodaysMenu
 
   const getTargetMealType = (dish: Dish): string => {
     const availableMealTypes = menus
-      .filter(menu => menu.dishes.some(d => d._id === dish._id))
+      .filter(menu => menu.dishes.some((d: Dish) => d._id === dish._id))
       .map(menu => menu.mealType);
     if (availableMealTypes.length === 0) return "lunch";
     const allowedMealType = availableMealTypes.find(mt => isOrderingAllowed(mt));
