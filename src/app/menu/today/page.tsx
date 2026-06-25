@@ -113,6 +113,55 @@ export default function TodaysMenuPage() {
     }
   };
 
+  const isOrderingAllowed = (mealType: string): boolean => {
+    const now = new Date();
+    const totalMins = now.getHours() * 60 + now.getMinutes();
+    if (mealType === "breakfast") return totalMins < 4 * 60 + 30;  // before 4:30 AM
+    if (mealType === "lunch")     return totalMins < 11 * 60;       // before 11:00 AM
+    if (mealType === "dinner")    return totalMins < 18 * 60;       // before 6:00 PM
+    return true;
+  };
+
+  const getCutoffLabel = (mealType: string): string => {
+    if (mealType === "breakfast") return "4:30 AM";
+    if (mealType === "lunch")     return "11:00 AM";
+    if (mealType === "dinner")    return "6:00 PM";
+    return "";
+  };
+
+  const isDishOrderingAllowed = (dish: Dish, mealType: string): boolean => {
+    if (mealType !== "all") {
+      return isOrderingAllowed(mealType);
+    }
+    const availableMealTypes = menus
+      .filter(menu => menu.dishes.some(d => d._id === dish._id))
+      .map(menu => menu.mealType);
+      
+    if (availableMealTypes.length === 0) return isOrderingAllowed("lunch");
+    return availableMealTypes.some(mt => isOrderingAllowed(mt));
+  };
+
+  const getDishCutoffLabel = (dish: Dish, mealType: string): string => {
+    if (mealType !== "all") return getCutoffLabel(mealType);
+    const availableMealTypes = menus
+      .filter(menu => menu.dishes.some(d => d._id === dish._id))
+      .map(menu => menu.mealType);
+    if (availableMealTypes.length === 0) return getCutoffLabel("lunch");
+    if (availableMealTypes.includes("dinner")) return getCutoffLabel("dinner");
+    if (availableMealTypes.includes("lunch")) return getCutoffLabel("lunch");
+    return getCutoffLabel("breakfast");
+  };
+
+  const getTargetMealType = (dish: Dish, preferredMealType: string): string => {
+    if (preferredMealType !== "all") return preferredMealType;
+    const availableMealTypes = menus
+      .filter(menu => menu.dishes.some(d => d._id === dish._id))
+      .map(menu => menu.mealType);
+    if (availableMealTypes.length === 0) return "lunch";
+    const allowedMealType = availableMealTypes.find(mt => isOrderingAllowed(mt));
+    return allowedMealType || availableMealTypes[0];
+  };
+
   const handleAddToCart = (dish: Dish, mealType?: string) => {
     if (!user) {
       toast.error("Please login to add items to cart", {
@@ -124,13 +173,24 @@ export default function TodaysMenuPage() {
       return;
     }
 
+    const preferredMeal = mealType || "lunch";
+    const targetMeal = getTargetMealType(dish, preferredMeal);
+
+    if (!isOrderingAllowed(targetMeal)) {
+      toast.error(
+        `${targetMeal.charAt(0).toUpperCase() + targetMeal.slice(1)} ordering is closed after ${getCutoffLabel(targetMeal)}`,
+        { description: "Please order before the cutoff time for same-day delivery." }
+      );
+      return;
+    }
+
     addItem({
       dishId: dish._id,
       name: dish.name,
       image: dish.image,
       price: dish.price,
       quantity: 1,
-      mealType: (mealType as any) || "lunch",
+      mealType: targetMeal as any,
       type: dish.type,
       date: format(new Date(), "yyyy-MM-dd")
     });
@@ -343,6 +403,8 @@ export default function TodaysMenuPage() {
                       key={dish._id}
                       dish={dish}
                       index={index}
+                      orderingAllowed={isDishOrderingAllowed(dish, selectedMealType)}
+                      cutoffLabel={getDishCutoffLabel(dish, selectedMealType)}
                       onAddToCart={() => handleAddToCart(dish)}
                       onViewDetails={() => {
                         setSelectedDish(dish);
@@ -360,7 +422,7 @@ export default function TodaysMenuPage() {
               </motion.div>
             </AnimatePresence>
           </TabsContent>
-
+ 
           {/* Individual Meal Type Tabs */}
           {MEAL_TYPES.map((type) => (
             <TabsContent key={type.id} value={type.id} className="mt-6">
@@ -377,6 +439,8 @@ export default function TodaysMenuPage() {
                       dish={dish}
                       index={index}
                       mealType={type.id}
+                      orderingAllowed={isOrderingAllowed(type.id)}
+                      cutoffLabel={getCutoffLabel(type.id)}
                       onAddToCart={() => handleAddToCart(dish, type.id)}
                       onViewDetails={() => {
                         setSelectedDish(dish);
@@ -397,16 +461,20 @@ export default function TodaysMenuPage() {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         onAddToCart={handleAddToCart}
+        isMealOrderingAllowed={isOrderingAllowed}
+        getMealCutoffLabel={getCutoffLabel}
       />
     </div>
   );
 }
 
 // Dish Card Component
-function DishCard({ dish, index, mealType, onAddToCart, onViewDetails }: {
+function DishCard({ dish, index, mealType, orderingAllowed = true, cutoffLabel = "", onAddToCart, onViewDetails }: {
   dish: Dish;
   index: number;
   mealType?: string;
+  orderingAllowed?: boolean;
+  cutoffLabel?: string;
   onAddToCart: () => void;
   onViewDetails: () => void;
 }) {
@@ -447,6 +515,18 @@ function DishCard({ dish, index, mealType, onAddToCart, onViewDetails }: {
             <Flame size={12} /> Hot
           </div>
         )}
+
+        {/* Ordering closed overlay */}
+        {!orderingAllowed && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+            <div className="bg-white/95 rounded-xl px-4 py-2 text-center shadow-lg">
+              <p className="text-red-600 font-bold text-sm">Ordering Closed</p>
+              {cutoffLabel && (
+                <p className="text-xs text-gray-500 mt-0.5">Closed after {cutoffLabel}</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-4">
@@ -476,15 +556,26 @@ function DishCard({ dish, index, mealType, onAddToCart, onViewDetails }: {
 
         <div className="flex items-center justify-between">
           <p className="text-xl font-bold text-primary">₹{dish.price}</p>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddToCart();
-            }}
-            className="p-2 bg-soft hover:bg-primary hover:text-white rounded-xl transition-colors"
-          >
-            <ShoppingBag size={18} />
-          </button>
+          {orderingAllowed ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToCart();
+              }}
+              className="p-2 bg-soft hover:bg-primary hover:text-white rounded-xl transition-colors"
+            >
+              <ShoppingBag size={18} />
+            </button>
+          ) : (
+            <button
+              disabled
+              className="p-2 bg-gray-100 text-gray-400 rounded-xl cursor-not-allowed"
+              onClick={(e) => e.stopPropagation()}
+              title={cutoffLabel ? `Closed after ${cutoffLabel}` : "Ordering Closed"}
+            >
+              <ShoppingBag size={18} />
+            </button>
+          )}
         </div>
       </div>
     </motion.div>
@@ -552,16 +643,21 @@ function MobileFilters({ dietaryFilter, setDietaryFilter, priceRange, setPriceRa
 }
 
 // Dish Detail Modal Component
-function DishDetailModal({ dish, isOpen, onClose, onAddToCart }: {
+function DishDetailModal({ dish, isOpen, onClose, onAddToCart, isMealOrderingAllowed, getMealCutoffLabel }: {
   dish: Dish | null;
   isOpen: boolean;
   onClose: () => void;
   onAddToCart: (dish: Dish, mealType?: string) => void;
+  isMealOrderingAllowed?: (mealType: string) => boolean;
+  getMealCutoffLabel?: (mealType: string) => string;
 }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedMealType, setSelectedMealType] = useState<"breakfast" | "lunch" | "dinner">("lunch");
 
   if (!dish) return null;
+
+  const orderingAllowed = isMealOrderingAllowed ? isMealOrderingAllowed(selectedMealType) : true;
+  const cutoffLabel = getMealCutoffLabel ? getMealCutoffLabel(selectedMealType) : "";
 
   return (
     <AnimatePresence>
@@ -680,18 +776,27 @@ function DishDetailModal({ dish, isOpen, onClose, onAddToCart }: {
               </div>
 
               {/* Add to Cart */}
-              <button
-                onClick={() => {
-                  for (let i = 0; i < quantity; i++) {
-                    onAddToCart(dish, selectedMealType);
-                  }
-                  onClose();
-                }}
-                className="w-full bg-primary hover:bg-accent text-white py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-colors"
-              >
-                <ShoppingBag size={20} />
-                Add to Cart · ₹{dish.price * quantity}
-              </button>
+              {orderingAllowed ? (
+                <button
+                  onClick={() => {
+                    for (let i = 0; i < quantity; i++) {
+                      onAddToCart(dish, selectedMealType);
+                    }
+                    onClose();
+                  }}
+                  className="w-full bg-primary hover:bg-accent text-white py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <ShoppingBag size={20} />
+                  Add to Cart · ₹{dish.price * quantity}
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="w-full bg-gray-100 text-gray-400 py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 cursor-not-allowed"
+                >
+                  Closed after {cutoffLabel}
+                </button>
+              )}
             </div>
           </motion.div>
         </motion.div>

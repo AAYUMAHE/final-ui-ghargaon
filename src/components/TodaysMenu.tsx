@@ -55,11 +55,7 @@ export default function TodaysMenu({ limit = 4, showViewAll = true }: TodaysMenu
   };
 
   const isOrderingAllowed = (mealType: string): boolean => {
-    const now = new Date();
-    const totalMins = now.getHours() * 60 + now.getMinutes();
-    if (mealType === "breakfast") return totalMins < 4 * 60 + 30;  // before 4:30 AM
-    if (mealType === "lunch")     return totalMins < 11 * 60;       // before 11:00 AM
-    if (mealType === "dinner")    return totalMins < 18 * 60;       // before 6:00 PM
+    // Bypassed: always allowed on home page as per request
     return true;
   };
 
