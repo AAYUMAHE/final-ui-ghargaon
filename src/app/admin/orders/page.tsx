@@ -172,6 +172,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [paymentFilter, setPaymentFilter] = useState<string>("all")
   const [dateFilter, setDateFilter] = useState<string>("all")
+  const [exportDateRange, setExportDateRange] = useState<string>("today")
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [isMapDialogOpen, setIsMapDialogOpen] = useState(false)
@@ -313,6 +314,106 @@ export default function OrdersPage() {
     }
   }
 
+  const getGoogleMapsLink = (address: Order['deliveryAddress']) => {
+    if (address.coordinates?.lat && address.coordinates?.lng) {
+      return `https://www.google.com/maps?q=${address.coordinates.lat},${address.coordinates.lng}`
+    }
+    const query = encodeURIComponent(`${address.houseNumber} ${address.area} ${address.pincode}`)
+    return `https://www.google.com/maps/search/?api=1&query=${query}`
+  }
+
+  const handleExport = () => {
+    const now = new Date()
+    const filtered = orders.filter(order => {
+      const orderDate = parseISO(order.createdAt)
+      switch (exportDateRange) {
+        case "today":
+          return isToday(orderDate)
+        case "yesterday":
+          return isYesterday(orderDate)
+        case "week":
+          return differenceInDays(now, orderDate) <= 7
+        case "month":
+          return differenceInDays(now, orderDate) <= 30
+        default:
+          return true
+      }
+    })
+
+    if (filtered.length === 0) {
+      toast.error("No orders found for the selected date range")
+      return
+    }
+
+    const escapeCSV = (value: string | number) => {
+      const str = String(value ?? '')
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`
+      }
+      return str
+    }
+
+    const headers = [
+      'Order ID',
+      'Customer Name',
+      'Email',
+      'Mobile',
+      'Items',
+      'Total (₹)',
+      'Delivery Date',
+      'Payment Status',
+      'Order Status',
+      'Order Date',
+      'Address',
+      'Google Maps Link'
+    ]
+
+    const rows = filtered.map(order => {
+      const name = getUserName(order)
+      const email = getUserEmail(order)
+      const mobile = getUserMobile(order)
+      const itemsSummary = order.items
+        .map(i => `${i.dishId?.name ?? 'Unknown'} x${i.quantity}`)
+        .join('; ')
+      const address = `${order.deliveryAddress.houseNumber}, ${order.deliveryAddress.area}, ${order.deliveryAddress.pincode}`
+      const mapsLink = getGoogleMapsLink(order.deliveryAddress)
+      const deliveryDate = (() => { try { return format(parseISO(order.deliveryDate), 'dd MMM yyyy') } catch { return order.deliveryDate } })()
+      const orderDate = (() => { try { return format(parseISO(order.createdAt), 'dd MMM yyyy hh:mm a') } catch { return order.createdAt } })()
+
+      return [
+        escapeCSV('#' + order._id),
+        escapeCSV(name),
+        escapeCSV(email),
+        escapeCSV(mobile),
+        escapeCSV(itemsSummary),
+        escapeCSV(order.totalAmount),
+        escapeCSV(deliveryDate),
+        escapeCSV(order.paymentStatus),
+        escapeCSV(getStatusConfig(order.orderStatus).label),
+        escapeCSV(orderDate),
+        escapeCSV(address),
+        escapeCSV(mapsLink)
+      ].join(',')
+    })
+
+    const csvContent = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const rangeLabel = exportDateRange === 'today' ? 'today'
+      : exportDateRange === 'yesterday' ? 'yesterday'
+      : exportDateRange === 'week' ? 'last-7-days'
+      : exportDateRange === 'month' ? 'last-30-days'
+      : 'all'
+    link.href = url
+    link.setAttribute('download', `orders-${rangeLabel}-${format(now, 'yyyy-MM-dd')}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    toast.success(`Exported ${filtered.length} order(s) successfully`)
+  }
+
   const getStatusCounts = () => {
     const counts: Record<string, number> = {
       all: orders.length
@@ -359,13 +460,29 @@ export default function OrdersPage() {
             <RefreshCw size={16} className="mr-2" />
             Refresh
           </Button>
-          <Button 
-            variant="outline"
-            className="rounded-full"
-          >
-            <Download size={16} className="mr-2" />
-            Export
-          </Button>
+
+          {/* Export with date range */}
+          <div className="flex items-center gap-2">
+            <Select value={exportDateRange} onValueChange={setExportDateRange}>
+              <SelectTrigger className="w-36 rounded-full">
+                <SelectValue placeholder="Select range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="yesterday">Yesterday</SelectItem>
+                <SelectItem value="week">Last 7 Days</SelectItem>
+                <SelectItem value="month">Last 30 Days</SelectItem>
+                <SelectItem value="all">All Time</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={handleExport}
+              className="rounded-full bg-green-600 hover:bg-green-700 text-white"
+            >
+              <Download size={16} className="mr-2" />
+              Export CSV
+            </Button>
+          </div>
         </div>
       </div>
 

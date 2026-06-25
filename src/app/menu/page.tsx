@@ -285,7 +285,11 @@ export default function UserMenuPage() {
                 variant="outline"
                 size="icon"
                 disabled={isToday(selectedDate)}
-                onClick={() => setSelectedDate(new Date(selectedDate.setDate(selectedDate.getDate() - 1)))}
+                onClick={() => {
+                  const prev = new Date(selectedDate)
+                  prev.setDate(prev.getDate() - 1)
+                  setSelectedDate(prev)
+                }}
                 className="rounded-full"
               >
                 <ChevronLeft size={18} />
@@ -296,7 +300,11 @@ export default function UserMenuPage() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setSelectedDate(new Date(selectedDate.setDate(selectedDate.getDate() + 1)))}
+                onClick={() => {
+                  const next = new Date(selectedDate)
+                  next.setDate(next.getDate() + 1)
+                  setSelectedDate(next)
+                }}
                 className="rounded-full"
               >
                 <ChevronRight size={18} />
