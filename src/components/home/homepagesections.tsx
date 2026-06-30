@@ -364,6 +364,10 @@ const Footer = () => (
                 <p className="text-gray-400 text-sm leading-relaxed">
                     Bringing the authentic taste of Indian villages to modern urban homes. Healthy, fresh, and handmade with absolute love.
                 </p>
+                <p className="text-gray-400 text-sm leading-relaxed">
+                    Display Name : GharGaon
+                    Legal Name : Manish
+                </p>
                 {/* Brand Social links */}
                 <div className="flex gap-3 mt-2">
                     <a 
