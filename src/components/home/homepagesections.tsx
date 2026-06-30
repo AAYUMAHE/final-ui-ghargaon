@@ -364,10 +364,7 @@ const Footer = () => (
                 <p className="text-gray-400 text-sm leading-relaxed">
                     Bringing the authentic taste of Indian villages to modern urban homes. Healthy, fresh, and handmade with absolute love.
                 </p>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                    Display Name : GharGaon
-                    Legal Name : Manish
-                </p>
+                
                 {/* Brand Social links */}
                 <div className="flex gap-3 mt-2">
                     <a 
@@ -514,6 +511,8 @@ const Footer = () => (
         {/* Bottom Bar */}
         <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500 gap-4">
             <p>© 2026 Ghar Gaon. All rights reserved.</p>
+            <p>Display Name: GharGaon </p>
+            <p>Legal Name : Manish</p>
             <div className="flex items-center gap-1">
                 <span>Made with</span>
                 <span className="text-red-500 animate-pulse">❤️</span>
