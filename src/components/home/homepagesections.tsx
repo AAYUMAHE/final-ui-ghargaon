@@ -510,9 +510,11 @@ const Footer = () => (
 
         {/* Bottom Bar */}
         <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500 gap-4">
-            <p>© 2026 Ghar Gaon. All rights reserved.</p>
-            <p>Display Name: GharGaon </p>
-            <p>Legal Name : Manish</p>
+            <div>
+                <p>© 2026 Ghar Gaon. All rights reserved.</p>
+                <p>Display Name: GharGaon</p>
+                <p>Legal Name: Manish</p>
+            </div>
             <div className="flex items-center gap-1">
                 <span>Made with</span>
                 <span className="text-red-500 animate-pulse">❤️</span>
