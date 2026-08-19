@@ -15,7 +15,8 @@ import {
   Info,
   CheckCircle,
   Truck,
-  Shield
+  Shield,
+  AlertCircle
 } from "lucide-react";
 import { menuApi } from "@/lib/menu-api";
 import { useCart } from "@/hooks/useCart";
@@ -57,8 +58,33 @@ export default function DishDetailPage() {
     }
   };
 
+  const isOrderingAllowed = (mealType: string): boolean => {
+    const now = new Date();
+    const totalMins = now.getHours() * 60 + now.getMinutes();
+    if (mealType === "breakfast") return totalMins < 4 * 60 + 30;  // before 4:30 AM
+    if (mealType === "lunch")     return totalMins < 11 * 60;       // before 11:00 AM
+    if (mealType === "dinner")    return totalMins < 18 * 60;       // before 6:00 PM
+    return true;
+  };
+
+  const getCutoffLabel = (mealType: string): string => {
+    if (mealType === "breakfast") return "4:30 AM";
+    if (mealType === "lunch")     return "11:00 AM";
+    if (mealType === "dinner")    return "6:00 PM";
+    return "";
+  };
+
   const handleAddToCart = () => {
     if (!dish) return;
+
+    // Time-based cutoff check
+    if (!isOrderingAllowed(selectedMealType)) {
+      toast.error(
+        `${selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)} ordering is closed after ${getCutoffLabel(selectedMealType)}`,
+        { description: "Please order before the cutoff time for same-day delivery." }
+      );
+      return;
+    }
 
     addItem({
       dishId: dish._id,
@@ -86,6 +112,8 @@ export default function DishDetailPage() {
   }
 
   if (!dish) return null;
+
+  const orderingAllowed = isOrderingAllowed(selectedMealType);
 
   return (
     <div className="min-h-screen pt-24 pb-16 px-4 max-w-7xl mx-auto">
@@ -150,20 +178,36 @@ export default function DishDetailPage() {
           <div className="mb-6">
             <label className="block text-sm font-medium mb-2">Select Meal Type</label>
             <div className="flex gap-3">
-              {["breakfast", "lunch", "dinner"].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setSelectedMealType(type as any)}
-                  className={`px-4 py-2 rounded-full capitalize transition-colors ${
-                    selectedMealType === type
-                      ? "bg-primary text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
+              {(["breakfast", "lunch", "dinner"] as const).map((type) => {
+                const allowed = isOrderingAllowed(type);
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setSelectedMealType(type)}
+                    disabled={!allowed}
+                    className={`px-4 py-2 rounded-full capitalize transition-colors ${
+                      selectedMealType === type
+                        ? allowed
+                          ? "bg-primary text-white"
+                          : "bg-red-100 text-red-600 border border-red-300"
+                        : allowed
+                        ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        : "bg-gray-100 text-gray-300 cursor-not-allowed line-through"
+                    }`}
+                  >
+                    {type}
+                    {!allowed && (
+                      <span className="ml-1 text-[10px] no-underline">✕</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
+            {!orderingAllowed && (
+              <p className="text-xs text-red-500 mt-2">
+                {selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)} ordering closed after {getCutoffLabel(selectedMealType)}
+              </p>
+            )}
           </div>
 
           {/* Quantity */}
@@ -199,13 +243,22 @@ export default function DishDetailPage() {
           </div>
 
           {/* Add to Cart Button */}
-          <Button
-            onClick={handleAddToCart}
-            className="w-full bg-primary hover:bg-accent rounded-full h-14 text-lg"
-          >
-            <ShoppingBag size={20} className="mr-2" />
-            Add to Cart · ₹{dish.price * quantity}
-          </Button>
+          {orderingAllowed ? (
+            <Button
+              onClick={handleAddToCart}
+              className="w-full bg-primary hover:bg-accent rounded-full h-14 text-lg"
+            >
+              <ShoppingBag size={20} className="mr-2" />
+              Add to Cart · ₹{dish.price * quantity}
+            </Button>
+          ) : (
+            <Button
+              disabled
+              className="w-full rounded-full h-14 text-lg bg-gray-100 text-gray-400 cursor-not-allowed"
+            >
+              Ordering Closed · After {getCutoffLabel(selectedMealType)}
+            </Button>
+          )}
 
           {/* Dish Details Tabs */}
           <Tabs defaultValue="description" className="mt-8">

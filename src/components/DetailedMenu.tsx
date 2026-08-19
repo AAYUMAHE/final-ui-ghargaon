@@ -159,7 +159,15 @@ export default function DetailedMenu() {
   };
 
   const isOrderingAllowed = (mealType: string): boolean => {
-    // Bypassed: always allowed on home page as per request
+    const today = format(new Date(), "yyyy-MM-dd");
+    const selected = format(selectedDate, "yyyy-MM-dd");
+    if (selected !== today) return selected > today; // Future dates allowed, past disabled
+
+    const now = new Date();
+    const totalMins = now.getHours() * 60 + now.getMinutes();
+    if (mealType === "breakfast") return totalMins < 4 * 60 + 30;  // before 4:30 AM
+    if (mealType === "lunch")     return totalMins < 11 * 60;       // before 11:00 AM
+    if (mealType === "dinner")    return totalMins < 18 * 60;       // before 6:00 PM
     return true;
   };
 
